@@ -86,6 +86,43 @@ else
 fi
 echo ""
 
+# ── EP7: Process Monitor ──
+echo -e "${YELLOW}[+] TOP 10 RUNNING PROCESSES${NC}"
+echo "────────────────────────────"
+ps aux --sort=-%cpu | head -11 | tail -10 | awk '{print "  "$1"\t"$11}'
+echo ""
+
+# ── EP7: Suspicious Processes ──
+echo -e "${YELLOW}[+] SUSPICIOUS PROCESSES CHECK${NC}"
+echo "────────────────────────────"
+suspects=("netcat" "nc" "ncat" "meterpreter" "shell" "backdoor")
+for proc in "${suspects[@]}"; do
+    result=$(ps aux | grep -i $proc | grep -v grep)
+    if [ ! -z "$result" ]; then
+        echo -e "  ${RED}[!!] SUSPICIOUS: $proc found running!${NC}"
+        echo "  $result"
+    else
+        echo -e "  ${GREEN}[OK]${NC} $proc not running"
+    fi
+done
+echo ""
+
+# ── EP8: Network Connections ──
+echo -e "${YELLOW}[+] ACTIVE NETWORK CONNECTIONS${NC}"
+echo "────────────────────────────"
+ss -tunp | grep ESTAB | awk '{print "  "$5" -> "$6}' | head -10
+echo ""
+
+# ── EP8: Curl Check ──
+echo -e "${YELLOW}[+] INTERNET CONNECTIVITY${NC}"
+echo "────────────────────────────"
+if curl -s --max-time 5 http://google.com > /dev/null; then
+    echo -e "  ${GREEN}[✓]${NC} Internet is reachable"
+else
+    echo -e "  ${RED}[✗]${NC} No internet connection"
+fi
+echo ""
+
 echo -e "${CYAN}=========================================="
 echo "   Recon Complete!"
 echo -e "==========================================${NC}"
