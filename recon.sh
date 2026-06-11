@@ -97,7 +97,7 @@ echo -e "${YELLOW}[+] SUSPICIOUS PROCESSES CHECK${NC}"
 echo "────────────────────────────"
 suspects=("netcat" "nc" "ncat" "meterpreter" "shell" "backdoor")
 for proc in "${suspects[@]}"; do
-    result=$(ps aux | grep -i $proc | grep -v grep)
+    result=$(ps aux | grep -iw $proc | grep -v grep | grep -v kworker | grep -v systemd)
     if [ ! -z "$result" ]; then
         echo -e "  ${RED}[!!] SUSPICIOUS: $proc found running!${NC}"
         echo "  $result"
@@ -122,6 +122,67 @@ else
     echo -e "  ${RED}[✗]${NC} No internet connection"
 fi
 echo ""
+
+# ── EP9: Speed & Efficiency ──
+echo -e "${YELLOW}[+] COMMAND HISTORY (last 10)${NC}"
+echo "────────────────────────────"
+history | tail -10 | awk '{print "  "$0}'
+echo ""
+
+echo -e "${YELLOW}[+] ALIASES SET${NC}"
+echo "────────────────────────────"
+alias | awk '{print "  "$0}'
+echo ""
+
+echo -e "${YELLOW}[+] ENVIRONMENT VARIABLES${NC}"
+echo "────────────────────────────"
+echo "  PATH    : $PATH"
+echo "  HOME    : $HOME"
+echo "  SHELL   : $SHELL"
+echo "  USER    : $USER"
+echo ""
+
+# ── EP10: System Safety Checks ──
+echo -e "${YELLOW}[+] DANGEROUS PERMISSIONS CHECK${NC}"
+echo "────────────────────────────"
+echo "  World-writable files in /etc:"
+find /etc -maxdepth 1 -perm -o+w 2>/dev/null | sed 's/^/    /' 
+if [ -z "$(find /etc -maxdepth 1 -perm -o+w 2>/dev/null)" ]; then
+    echo -e "  ${GREEN}[OK]${NC} No world-writable files found in /etc"
+fi
+echo ""
+
+echo -e "${YELLOW}[+] SUID FILES CHECK${NC}"
+echo "────────────────────────────"
+echo "  Files with SUID bit set (potential privilege escalation):"
+find / -perm -u=s -type f 2>/dev/null | head -10 | sed 's/^/    /'
+echo ""
+
+echo -e "${YELLOW}[+] CRITICAL FILES INTEGRITY${NC}"
+echo "────────────────────────────"
+critical_files=("/etc/passwd" "/etc/shadow" "/etc/hosts" "/etc/sudoers")
+for file in "${critical_files[@]}"; do
+    if [ -f "$file" ]; then
+        perms=$(stat -c "%a" $file)
+        echo -e "  ${GREEN}[✓]${NC} $file exists (permissions: $perms)"
+    else
+        echo -e "  ${RED}[✗]${NC} $file MISSING — system may be compromised!"
+    fi
+done
+echo ""
+
+echo -e "${YELLOW}[+] DISK SPACE WARNING${NC}"
+echo "────────────────────────────"
+disk_usage=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
+if [ $disk_usage -gt 90 ]; then
+    echo -e "  ${RED}[!!] WARNING: Disk is ${disk_usage}% full!${NC}"
+elif [ $disk_usage -gt 70 ]; then
+    echo -e "  ${YELLOW}[!] NOTICE: Disk is ${disk_usage}% full${NC}"
+else
+    echo -e "  ${GREEN}[OK]${NC} Disk usage is ${disk_usage}% — healthy"
+fi
+echo ""
+
 
 echo -e "${CYAN}=========================================="
 echo "   Recon Complete!"
